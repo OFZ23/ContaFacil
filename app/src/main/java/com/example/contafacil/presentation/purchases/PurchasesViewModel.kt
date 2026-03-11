@@ -51,12 +51,13 @@ class PurchasesViewModel(
     ) {
         viewModelScope.launch {
             try {
+                val normalizedProductName = productName.trim()
                 val totalAmount = quantity * unitPrice
                 val isPaid = paymentMethod != PaymentMethod.CREDITO
 
                 val transaction = TransactionEntity(
                     type = TransactionType.COMPRA,
-                    productName = productName,
+                    productName = normalizedProductName,
                     quantity = quantity,
                     unitPrice = unitPrice,
                     costUnitPrice = unitPrice,
@@ -68,7 +69,7 @@ class PurchasesViewModel(
                 transactionRepository.insertTransaction(transaction)
 
                 productRepository.updateOrCreateProduct(
-                    productName = productName,
+                    productName = normalizedProductName,
                     quantity = quantity,
                     isIncrease = true,
                     costPrice = unitPrice

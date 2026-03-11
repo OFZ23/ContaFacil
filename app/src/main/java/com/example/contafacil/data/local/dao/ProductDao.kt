@@ -12,7 +12,7 @@ interface ProductDao {
     @Query("SELECT * FROM products WHERE id = :productId")
     suspend fun getProductById(productId: Long): ProductEntity?
 
-    @Query("SELECT * FROM products WHERE name = :productName LIMIT 1")
+    @Query("SELECT * FROM products WHERE name = :productName COLLATE NOCASE LIMIT 1")
     suspend fun getProductByName(productName: String): ProductEntity?
 
     @Query("SELECT * FROM products WHERE stock <= minStockAlert")

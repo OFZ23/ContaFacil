@@ -15,24 +15,12 @@ class ProductRepositoryTest {
     fun updateOrCreateProduct_decreasesStockOnSale_andPreservesUpdatedPrices() = runBlocking {
         val dao = FakeProductDao(
             mutableListOf(
-                ProductEntity(
-                    id = 1,
-                    name = "Cafe",
-                    price = 1500.0,
-                    costPrice = 1000.0,
-                    stock = 10,
-                    minStockAlert = 5
-                )
+                ProductEntity(id = 1, name = "Cafe", price = 1500.0, costPrice = 1000.0, stock = 10)
             )
         )
         val repository = ProductRepository(dao)
 
-        repository.updateOrCreateProduct(
-            productName = "Cafe",
-            quantity = 3,
-            isIncrease = false,
-            salePrice = 2000.0
-        )
+        repository.updateOrCreateProduct(productName = "Cafe", quantity = 3, isIncrease = false, salePrice = 2000.0)
 
         val updated = dao.getProductByName("Cafe")
         assertNotNull(updated)
@@ -45,30 +33,38 @@ class ProductRepositoryTest {
     fun updateOrCreateProduct_increasesStockOnPurchase_andUpdatesCostPrice() = runBlocking {
         val dao = FakeProductDao(
             mutableListOf(
-                ProductEntity(
-                    id = 1,
-                    name = "Cafe",
-                    price = 2000.0,
-                    costPrice = 1000.0,
-                    stock = 7,
-                    minStockAlert = 5
-                )
+                ProductEntity(id = 1, name = "Cafe", price = 2000.0, costPrice = 1000.0, stock = 7)
             )
         )
         val repository = ProductRepository(dao)
 
-        repository.updateOrCreateProduct(
-            productName = "Cafe",
-            quantity = 5,
-            isIncrease = true,
-            costPrice = 1200.0
-        )
+        repository.updateOrCreateProduct(productName = "Cafe", quantity = 5, isIncrease = true, costPrice = 1200.0)
 
         val updated = dao.getProductByName("Cafe")
         assertNotNull(updated)
         assertEquals(12, updated?.stock)
         assertEquals(2000.0, updated?.price ?: 0.0, 0.0)
         assertEquals(1200.0, updated?.costPrice ?: 0.0, 0.0)
+    }
+
+    /**
+     * Reproduce el bug: primera venta con espacios extra en el nombre.
+     * El trim() debe encontrar el producto y descontar stock.
+     */
+    @Test
+    fun firstSale_decreasesStock_whenNameMatchesAfterTrim() = runBlocking {
+        val dao = FakeProductDao(
+            mutableListOf(
+                ProductEntity(id = 1, name = "Cafe Volcan", price = 2000.0, costPrice = 1000.0, stock = 10)
+            )
+        )
+        val repository = ProductRepository(dao)
+
+        repository.updateOrCreateProduct(productName = "  Cafe Volcan  ", quantity = 2, isIncrease = false, salePrice = 2000.0)
+
+        val product = dao.getProductByName("Cafe Volcan")
+        assertNotNull("El producto debe existir tras la primera venta", product)
+        assertEquals("El stock debe bajar de 10 a 8 en la primera venta", 8, product?.stock)
     }
 }
 
@@ -78,49 +74,41 @@ private class FakeProductDao(
     private val products = initialProducts
     private val productsFlow = MutableStateFlow(products.sortedBy { it.name })
 
-    private fun refreshFlow() {
-        productsFlow.value = products.sortedBy { it.name }
-    }
+    private fun refreshFlow() { productsFlow.value = products.sortedBy { it.name } }
 
     override fun getAllProducts(): Flow<List<ProductEntity>> = productsFlow
 
     override suspend fun getProductById(productId: Long): ProductEntity? =
         products.firstOrNull { it.id == productId }
 
+    // Simula COLLATE NOCASE + trim
     override suspend fun getProductByName(productName: String): ProductEntity? =
-        products.firstOrNull { it.name == productName }
+        products.firstOrNull { it.name.trim().lowercase() == productName.trim().lowercase() }
 
     override fun getLowStockProducts(): Flow<List<ProductEntity>> =
         MutableStateFlow(products.filter { it.stock <= it.minStockAlert })
 
     override suspend fun insertProduct(product: ProductEntity): Long {
         val nextId = (products.maxOfOrNull { it.id } ?: 0L) + 1L
-        products += product.copy(id = nextId)
-        refreshFlow()
-        return nextId
+        products += product.copy(id = nextId); refreshFlow(); return nextId
     }
 
     override suspend fun updateProduct(product: ProductEntity) {
         val index = products.indexOfFirst { it.id == product.id }
-        if (index >= 0) {
-            products[index] = product
-            refreshFlow()
-        }
+        if (index >= 0) { products[index] = product; refreshFlow() }
     }
 
     override suspend fun deleteProduct(product: ProductEntity) {
-        products.removeIf { it.id == product.id }
-        refreshFlow()
+        products.removeIf { it.id == product.id }; refreshFlow()
     }
 
     override suspend fun increaseStock(productId: Long, quantity: Int) {
-        val product = getProductById(productId) ?: return
-        updateProduct(product.copy(stock = product.stock + quantity))
+        val p = getProductById(productId) ?: return
+        updateProduct(p.copy(stock = p.stock + quantity))
     }
 
     override suspend fun decreaseStock(productId: Long, quantity: Int) {
-        val product = getProductById(productId) ?: return
-        updateProduct(product.copy(stock = (product.stock - quantity).coerceAtLeast(0)))
+        val p = getProductById(productId) ?: return
+        updateProduct(p.copy(stock = (p.stock - quantity).coerceAtLeast(0)))
     }
 }
-
