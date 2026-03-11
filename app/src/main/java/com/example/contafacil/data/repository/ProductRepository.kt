@@ -3,6 +3,7 @@ package com.example.contafacil.data.repository
 import com.example.contafacil.data.local.dao.ProductDao
 import com.example.contafacil.data.local.entity.ProductEntity
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 
 class ProductRepository(private val productDao: ProductDao) {
 
@@ -13,8 +14,18 @@ class ProductRepository(private val productDao: ProductDao) {
     suspend fun getProductById(productId: Long): ProductEntity? =
         productDao.getProductById(productId)
 
-    suspend fun getProductByName(productName: String): ProductEntity? =
-        productDao.getProductByName(productName)
+    suspend fun getProductByName(productName: String): ProductEntity? {
+        val cleanName = productName.trim().replace("\\s+".toRegex(), " ")
+        val normalizedName = normalizeProductName(cleanName)
+
+        // Fast path: query directa (NOCASE en SQL)
+        productDao.getProductByName(cleanName)?.let { return it }
+
+        // Fallback: comparación normalizada para cubrir espacios/tildes inconsistentes
+        return productDao.getAllProducts().first().firstOrNull {
+            normalizeProductName(it.name) == normalizedName
+        }
+    }
 
     suspend fun insertProduct(product: ProductEntity): Long =
         productDao.insertProduct(product)
@@ -38,8 +49,8 @@ class ProductRepository(private val productDao: ProductDao) {
         salePrice: Double? = null,
         costPrice: Double? = null
     ) {
-        val normalizedName = productName.trim()
-        val existingProduct = getProductByName(normalizedName)
+        val cleanName = productName.trim().replace("\\s+".toRegex(), " ")
+        val existingProduct = getProductByName(cleanName)
 
         if (existingProduct != null) {
             val updatedStock = if (isIncrease) {
@@ -49,7 +60,7 @@ class ProductRepository(private val productDao: ProductDao) {
             }
 
             val updatedProduct = existingProduct.copy(
-                name = normalizedName,
+                name = existingProduct.name,
                 price = salePrice ?: existingProduct.price,
                 costPrice = costPrice ?: existingProduct.costPrice,
                 stock = updatedStock
@@ -57,14 +68,27 @@ class ProductRepository(private val productDao: ProductDao) {
 
             updateProduct(updatedProduct)
         } else {
+            // Solo compras pueden crear productos nuevos en inventario.
+            if (!isIncrease) {
+                throw IllegalStateException("No existe el producto '$cleanName' en inventario para descontar stock")
+            }
+
             insertProduct(
                 ProductEntity(
-                    name = normalizedName,
+                    name = cleanName,
                     price = salePrice ?: costPrice ?: 0.0,
                     costPrice = costPrice ?: 0.0,
-                    stock = if (isIncrease) quantity else 0
+                    stock = quantity
                 )
             )
         }
+    }
+
+    private fun normalizeProductName(name: String): String {
+        val trimmed = name.trim().replace("\\s+".toRegex(), " ")
+        return java.text.Normalizer
+            .normalize(trimmed, java.text.Normalizer.Form.NFD)
+            .replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
+            .lowercase()
     }
 }

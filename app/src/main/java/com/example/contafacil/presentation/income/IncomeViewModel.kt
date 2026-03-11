@@ -63,11 +63,15 @@ class IncomeViewModel(
     ) {
         viewModelScope.launch {
             try {
-                val normalizedProductName = productName.trim()
+                val normalizedProductName = productName.trim().replace("\\s+".toRegex(), " ")
+                val product = productRepository.getProductByName(normalizedProductName)
+                    ?: throw IllegalStateException(
+                        "El producto '$normalizedProductName' no existe en inventario. Regístralo primero en Compras."
+                    )
+
                 val totalAmount = quantity * unitPrice
                 val isPaid = paymentMethod != PaymentMethod.CREDITO
-                val product = productRepository.getProductByName(normalizedProductName)
-                val costUnitPrice = product?.costPrice ?: 0.0
+                val costUnitPrice = product.costPrice
 
                 val transaction = TransactionEntity(
                     type = TransactionType.VENTA,

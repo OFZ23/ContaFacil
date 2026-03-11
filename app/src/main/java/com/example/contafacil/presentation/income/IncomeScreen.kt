@@ -419,7 +419,7 @@ fun AddSaleDialog(
                                     headlineContent = { Text(product.name) },
                                     supportingContent = {
                                         Text(
-                                            "Disponible: ${product.stock} • Precio sugerido: ${NumberFormat.getCurrencyInstance(Locale(\"es\", \"CO\")).format(product.price)}"
+                                            "Disponible: ${product.stock} • Precio sugerido: ${NumberFormat.getCurrencyInstance(Locale("es", "CO")).format(product.price)}"
                                         )
                                     },
                                     leadingContent = {
