@@ -31,28 +31,40 @@ class ProductRepository(private val productDao: ProductDao) {
     suspend fun decreaseStock(productId: Long, quantity: Int) =
         productDao.decreaseStock(productId, quantity)
 
-    suspend fun updateOrCreateProduct(productName: String, quantity: Int, price: Double, isIncrease: Boolean) {
-        val existingProduct = getProductByName(productName)
+    suspend fun updateOrCreateProduct(
+        productName: String,
+        quantity: Int,
+        isIncrease: Boolean,
+        salePrice: Double? = null,
+        costPrice: Double? = null
+    ) {
+        val normalizedName = productName.trim()
+        val existingProduct = getProductByName(normalizedName)
+
         if (existingProduct != null) {
-            if (isIncrease) {
-                increaseStock(existingProduct.id, quantity)
+            val updatedStock = if (isIncrease) {
+                existingProduct.stock + quantity
             } else {
-                decreaseStock(existingProduct.id, quantity)
+                (existingProduct.stock - quantity).coerceAtLeast(0)
             }
-            // Actualizar precio si cambió
-            if (existingProduct.price != price) {
-                updateProduct(existingProduct.copy(price = price))
-            }
+
+            val updatedProduct = existingProduct.copy(
+                name = normalizedName,
+                price = salePrice ?: existingProduct.price,
+                costPrice = costPrice ?: existingProduct.costPrice,
+                stock = updatedStock
+            )
+
+            updateProduct(updatedProduct)
         } else {
-            // Crear nuevo producto
             insertProduct(
                 ProductEntity(
-                    name = productName,
-                    price = price,
+                    name = normalizedName,
+                    price = salePrice ?: costPrice ?: 0.0,
+                    costPrice = costPrice ?: 0.0,
                     stock = if (isIncrease) quantity else 0
                 )
             )
         }
     }
 }
-

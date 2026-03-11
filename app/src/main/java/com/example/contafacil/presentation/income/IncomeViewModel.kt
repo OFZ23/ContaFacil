@@ -3,6 +3,7 @@ package com.example.contafacil.presentation.income
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.contafacil.data.local.entity.PaymentMethod
+import com.example.contafacil.data.local.entity.ProductEntity
 import com.example.contafacil.data.local.entity.TransactionEntity
 import com.example.contafacil.data.local.entity.TransactionType
 import com.example.contafacil.data.repository.ProductRepository
@@ -14,6 +15,7 @@ import kotlinx.coroutines.launch
 
 data class IncomeState(
     val transactions: List<TransactionEntity> = emptyList(),
+    val products: List<ProductEntity> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null
 )
@@ -28,6 +30,7 @@ class IncomeViewModel(
 
     init {
         loadTransactions()
+        loadProducts()
     }
 
     private fun loadTransactions() {
@@ -42,6 +45,15 @@ class IncomeViewModel(
         }
     }
 
+    private fun loadProducts() {
+        viewModelScope.launch {
+            productRepository.getAllProducts()
+                .collect { products ->
+                    _state.value = _state.value.copy(products = products)
+                }
+        }
+    }
+
     fun addSale(
         productName: String,
         quantity: Int,
@@ -51,15 +63,18 @@ class IncomeViewModel(
     ) {
         viewModelScope.launch {
             try {
+                val normalizedProductName = productName.trim()
                 val totalAmount = quantity * unitPrice
                 val isPaid = paymentMethod != PaymentMethod.CREDITO
+                val product = productRepository.getProductByName(normalizedProductName)
+                val costUnitPrice = product?.costPrice ?: 0.0
 
-                // Registrar la venta
                 val transaction = TransactionEntity(
                     type = TransactionType.VENTA,
-                    productName = productName,
+                    productName = normalizedProductName,
                     quantity = quantity,
                     unitPrice = unitPrice,
+                    costUnitPrice = costUnitPrice,
                     totalAmount = totalAmount,
                     paymentMethod = paymentMethod,
                     isPaid = isPaid,
@@ -67,12 +82,11 @@ class IncomeViewModel(
                 )
                 transactionRepository.insertTransaction(transaction)
 
-                // Actualizar inventario (disminuir stock)
                 productRepository.updateOrCreateProduct(
-                    productName = productName,
+                    productName = normalizedProductName,
                     quantity = quantity,
-                    price = unitPrice,
-                    isIncrease = false
+                    isIncrease = false,
+                    salePrice = unitPrice
                 )
 
             } catch (e: Exception) {
@@ -83,17 +97,29 @@ class IncomeViewModel(
         }
     }
 
+    fun markSaleAsPaid(transaction: TransactionEntity) {
+        if (transaction.isPaid) return
+        viewModelScope.launch {
+            try {
+                transactionRepository.updateTransaction(transaction.copy(isPaid = true))
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(
+                    errorMessage = "Error al marcar venta como cobrada: ${e.message}"
+                )
+            }
+        }
+    }
+
     fun deleteTransaction(transaction: TransactionEntity) {
         viewModelScope.launch {
             try {
                 transactionRepository.deleteTransaction(transaction)
 
-                // Restaurar inventario
                 productRepository.updateOrCreateProduct(
                     productName = transaction.productName,
                     quantity = transaction.quantity,
-                    price = transaction.unitPrice,
-                    isIncrease = true
+                    isIncrease = true,
+                    salePrice = transaction.unitPrice
                 )
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
@@ -107,4 +133,3 @@ class IncomeViewModel(
         _state.value = _state.value.copy(errorMessage = null)
     }
 }
-

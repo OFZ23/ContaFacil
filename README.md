@@ -1,5 +1,22 @@
 # ContaFacil - Sistema de Contabilidad para Microempresarios
 
+## 📲 Descargar la App (APK)
+
+> El APK listo para instalar está en la raíz del repositorio:
+>
+> **[`ContaFacil.apk`](ContaFacil.apk)** ← descarga este archivo y ábrelo en tu celular Android
+
+### Pasos para instalar
+1. Descarga el archivo `ContaFacil.apk` desde esta página (botón **Raw** o **Download**)
+2. Envíatelo al celular por WhatsApp, email o USB
+3. En el celular, ve a **Ajustes → Seguridad** y activa **"Fuentes desconocidas"**
+4. Abre el archivo `.apk` desde el celular y toca **Instalar**
+5. ¡Listo! Busca **ContaFacil** en tu menú de apps
+
+> Requiere Android 7.0 o superior · Espacio: ~20 MB · Permiso de micrófono (para entrada por voz)
+
+---
+
 ## Descripción
 ContaFacil es una aplicación móvil Android diseñada para ayudar a microempresarios a controlar su negocio de forma sencilla. Es un Producto Mínimo Viable (PMV) desarrollado como proyecto universitario.
 
@@ -116,14 +133,16 @@ com.example.contafacil/
 ## Funcionalidades Futuras (Roadmap)
 
 ### Próximas Versiones
-- [ ] Entrada de datos por voz (Speech-to-Text)
+- [x] Entrada de datos por voz (Speech-to-Text)
+- [x] Autocompletado de productos al registrar ventas
+- [x] Cálculo correcto de flujo de caja y estado de resultados
+- [x] Diseño visual moderno con Material Design 3
 - [ ] Filtros por fecha en reportes
 - [ ] Gráficos y visualizaciones
 - [ ] Exportación de reportes a PDF/CSV
 - [ ] Backup en la nube
 - [ ] Múltiples negocios
 - [ ] Notificaciones de stock bajo
-- [ ] Historial de cambios en inventario
 
 ## Contribuciones
 Este es un proyecto universitario. Para contribuir, por favor crear un fork y enviar pull requests.

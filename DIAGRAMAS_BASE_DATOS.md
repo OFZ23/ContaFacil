@@ -1,0 +1,406 @@
+# 🗄️ Diagrama de la Base de Datos de ContaFacil
+
+## 🎯 Ubicación General
+
+```
+TU CELULAR
+    ↓
+/data/data/com.example.contafacil/
+    ├── databases/
+    │   ├── contafacil_database      ← AQUÍ ESTÁ LA BD SQLite
+    │   └── contafacil_database-wal  ← Archivo de respaldo
+    ├── shared_prefs/
+    └── files/
+```
+
+---
+
+## 📊 Estructura de Tablas
+
+```
+┌─────────────────────────────────────────────────────────┐
+│            CONTAFACIL_DATABASE (SQLite)                 │
+└─────────────────────────────────────────────────────────┘
+                          │
+        ┌─────────────────┼─────────────────┐
+        ↓                 ↓                 ↓
+    ┌────────────┐   ┌──────────────┐  ┌──────────────┐
+    │ PRODUCTS   │   │ TRANSACTIONS │  │   EXPENSES   │
+    └────────────┘   └──────────────┘  └──────────────┘
+        │                  │                  │
+        ├─ id              ├─ id              ├─ id
+        ├─ name            ├─ type            ├─ category
+        ├─ quantity        ├─ productName     ├─ amount
+        ├─ price           ├─ quantity        ├─ date
+        └─ lastUpdated     ├─ unitPrice       ├─ description
+                           ├─ totalAmount     └─ notes
+                           ├─ paymentMethod
+                           ├─ isPaid
+                           ├─ date
+                           └─ notes
+```
+
+---
+
+## 🔄 Flujo de Datos en la App
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    USUARIO                              │
+│          (Abre la app y registra datos)                 │
+└─────────────────────────────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────────────┐
+│                UI SCREENS (Compose)                      │
+│   (IncomeScreen, PurchasesScreen, ExpensesScreen)      │
+└─────────────────────────────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────────────┐
+│              ViewModels                                  │
+│  (IncomeVM, PurchasesVM, ExpensesVM, InventoryVM)      │
+└─────────────────────────────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────────────┐
+│             Repositories                                 │
+│  (ProductRepository, TransactionRepository, etc.)       │
+└─────────────────────────────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────────────┐
+│              DAOs (Data Access)                          │
+│  (ProductDao, TransactionDao, ExpenseDao)              │
+└─────────────────────────────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────────────┐
+│          CONTAFACIL_DATABASE (SQLite)                    │
+│        (Almacena todos los datos)                       │
+│                                                         │
+│  ┌─────────┐  ┌──────────────┐  ┌──────────┐          │
+│  │PRODUCTS │  │TRANSACTIONS  │  │ EXPENSES │          │
+│  └─────────┘  └──────────────┘  └──────────┘          │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🏗️ Arquitectura ROOM
+
+```
+┌──────────────────────────────────────────────────┐
+│          AppDatabase.kt                          │
+│  (Clase abstracta que define la BD)             │
+├──────────────────────────────────────────────────┤
+│  Propiedades:                                    │
+│  - entities = [ProductEntity, Transaction...] │
+│  - version = 1                                   │
+│  - TypeConverters = Converters                   │
+├──────────────────────────────────────────────────┤
+│  Métodos Abstractos:                             │
+│  - productDao(): ProductDao                      │
+│  - transactionDao(): TransactionDao              │
+│  - expenseDao(): ExpenseDao                      │
+├──────────────────────────────────────────────────┤
+│  Companion Object:                               │
+│  - getDatabase(context): AppDatabase             │
+│    (Patrón Singleton para acceso)                │
+└──────────────────────────────────────────────────┘
+```
+
+---
+
+## 📋 Tabla: ProductEntity
+
+```
+┌─────────────────────────────────────┐
+│         TABLA: products             │
+├─────────────────────────────────────┤
+│ Campo          │ Tipo      │ Notas  │
+├────────────────┼───────────┼────────┤
+│ id             │ Int       │ PK*    │
+│ name           │ String    │ Índice │
+│ quantity       │ Int       │        │
+│ price          │ Double    │        │
+│ lastUpdated    │ Long      │        │
+└─────────────────────────────────────┘
+* PK = Clave Primaria (Primary Key)
+
+Qué almacena:
+- Café: 50 unidades a $2.50 c/u
+- Pan: 100 unidades a $0.50 c/u
+- Leche: 30 unidades a $1.00 c/u
+```
+
+---
+
+## 💰 Tabla: TransactionEntity
+
+```
+┌──────────────────────────────────────────────┐
+│      TABLA: transactions (Ventas/Compras)   │
+├──────────────────────────────────────────────┤
+│ Campo          │ Tipo            │ Notas  │
+├────────────────┼─────────────────┼────────┤
+│ id             │ Int             │ PK     │
+│ type           │ TransactionType │ SALE   │
+│                │                 │ PURCHASE│
+│ productName    │ String          │        │
+│ quantity       │ Int             │        │
+│ unitPrice      │ Double          │        │
+│ totalAmount    │ Double          │        │
+│ paymentMethod  │ PaymentMethod   │ CASH   │
+│                │                 │ CARD   │
+│                │                 │ TRANSFER│
+│                │                 │ CREDIT │
+│ isPaid         │ Boolean         │        │
+│ date           │ Long            │ Timestamp │
+│ notes          │ String          │ Optional│
+└──────────────────────────────────────────────┘
+
+Ejemplos de registros:
+- Venta: 3 café a $2.50 = $7.50 (Efectivo)
+- Compra: 10 pan a $0.30 = $3.00 (Transferencia)
+```
+
+---
+
+## 💸 Tabla: ExpenseEntity
+
+```
+┌───────────────────────────────────────┐
+│         TABLA: expenses (Gastos)      │
+├───────────────────────────────────────┤
+│ Campo        │ Tipo            │ Notas │
+├──────────────┼─────────────────┼───────┤
+│ id           │ Int             │ PK    │
+│ category     │ ExpenseCategory │       │
+│ amount       │ Double          │       │
+│ date         │ Long            │       │
+│ description  │ String          │       │
+│ notes        │ String          │       │
+└───────────────────────────────────────┘
+
+Categorías disponibles:
+- AGUA
+- LUZ
+- INTERNET
+- ARRIENDO
+- NOMINA
+- OTROS
+
+Ejemplos:
+- Agua: $15.00
+- Luz: $25.00
+- Arriendo: $300.00
+```
+
+---
+
+## 🔌 DAOs - Operaciones CRUD
+
+```
+┌─────────────────────────────────────┐
+│        ProductDao                   │
+├─────────────────────────────────────┤
+│ @Insert insertProduct(product)      │
+│ @Update updateProduct(product)      │
+│ @Delete deleteProduct(product)      │
+│ @Query getAllProducts(): Flow       │
+│ @Query getProductById(id): Product  │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│      TransactionDao                 │
+├─────────────────────────────────────┤
+│ @Insert insertTransaction(tx)       │
+│ @Update updateTransaction(tx)       │
+│ @Delete deleteTransaction(tx)       │
+│ @Query getAllTransactions(): Flow   │
+│ @Query getTransactionsByType(): Flow│
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│      ExpenseDao                     │
+├─────────────────────────────────────┤
+│ @Insert insertExpense(expense)      │
+│ @Update updateExpense(expense)      │
+│ @Delete deleteExpense(expense)      │
+│ @Query getAllExpenses(): Flow       │
+│ @Query getExpensesByCategory(): Flow│
+└─────────────────────────────────────┘
+```
+
+---
+
+## 📁 Estructura en el Archivo System
+
+```
+/home/offz/AndroidStudioProjects/ContaFacil/
+│
+└── app/src/main/java/com/example/contafacil/
+    │
+    └── data/
+        ├── local/
+        │   │
+        │   ├── AppDatabase.kt
+        │   │   └── Configura todas las tablas
+        │   │       y proporciona acceso
+        │   │
+        │   ├── Converters.kt
+        │   │   └── Convierte tipos de datos
+        │   │
+        │   ├── entity/
+        │   │   ├── ProductEntity.kt         ← Define tabla PRODUCTS
+        │   │   ├── TransactionEntity.kt     ← Define tabla TRANSACTIONS
+        │   │   ├── ExpenseEntity.kt         ← Define tabla EXPENSES
+        │   │   ├── PaymentMethod.kt         ← Enum
+        │   │   ├── TransactionType.kt       ← Enum
+        │   │   └── ExpenseCategory.kt       ← Enum
+        │   │
+        │   └── dao/
+        │       ├── ProductDao.kt            ← Operaciones PRODUCTS
+        │       ├── TransactionDao.kt        ← Operaciones TRANSACTIONS
+        │       └── ExpenseDao.kt            ← Operaciones EXPENSES
+        │
+        └── repository/
+            ├── ProductRepository.kt
+            ├── TransactionRepository.kt
+            └── ExpenseRepository.kt
+```
+
+---
+
+## 🔄 Ciclo de Vida de un Registro
+
+### Ejemplo: Registrar una Venta
+
+```
+1. Usuario abre "Ingresos"
+           ↓
+2. IncomeScreen (UI) se muestra
+           ↓
+3. Usuario llena el formulario:
+   - Producto: "Café"
+   - Cantidad: 3
+   - Precio: $2.50
+   - Pago: Efectivo
+           ↓
+4. Usuario toca "Guardar"
+           ↓
+5. IncomeViewModel recibe los datos
+           ↓
+6. TransactionRepository.insertSale() se llama
+           ↓
+7. TransactionDao.insertTransaction() se ejecuta
+           ↓
+8. Room ejecuta SQL INSERT en la tabla transactions
+           ↓
+9. SQLite escribe en contafacil_database
+           ↓
+10. ProductDao.updateProduct() actualiza stock
+           ↓
+11. La venta aparece en la lista
+           ↓
+12. Los datos están guardados permanentemente
+```
+
+---
+
+## 🔒 Seguridad y Almacenamiento
+
+```
+DISPOSITIVO ANDROID
+├── /data/
+│   ├── data/
+│   │   └── com.example.contafacil/
+│   │       ├── databases/
+│   │       │   ├── contafacil_database      ← PRIVADO
+│   │       │   └── contafacil_database-wal  ← PRIVADO
+│   │       ├── shared_prefs/
+│   │       └── files/
+│   │
+│   └── [Otras apps aquí, NO pueden acceder]
+│
+└── [Almacenamiento externo (NO usamos)]
+
+Protección:
+✅ Sandbox de Android
+✅ Permisos de archivo (rw-------)
+✅ Encriptación del dispositivo (si está activada)
+❌ Sin copias en la nube automáticas
+```
+
+---
+
+## 📊 Relaciones Entre Tablas
+
+```
+                    ProductEntity
+                    (Inventario)
+                          △
+                          │
+                          │ Aumenta/Disminuye
+                          │ cantidad
+                          │
+        ┌─────────────────┴─────────────────┐
+        │                                   │
+        ↓                                   ↓
+   VENTA (Sale)                      COMPRA (Purchase)
+   en TransactionEntity               en TransactionEntity
+        │                                   │
+        ├─ productName                      ├─ productName
+        ├─ quantity                         ├─ quantity
+        ├─ unitPrice                        ├─ unitPrice
+        ├─ totalAmount                      ├─ totalAmount
+        ├─ paymentMethod                    ├─ paymentMethod
+        ├─ isPaid                           ├─ isPaid
+        └─ date                             └─ date
+
+ExpenseEntity (Independiente)
+├─ category
+├─ amount
+├─ date
+└─ notes
+```
+
+---
+
+## 🎯 Cómo Todo Está Conectado
+
+```
+PRESENTACIÓN (UI)
+    ↓
+LÓGICA (ViewModel)
+    ↓
+ACCESO A DATOS (Repository)
+    ↓
+INTERFAZ DE BD (DAO)
+    ↓
+BD (SQLite - contafacil_database)
+    ↓
+ARCHIVO FÍSICO EN DISPOSITIVO
+```
+
+---
+
+## 📝 Resumen Visual
+
+```
+┌──────────────────────────────────────────────────────────┐
+│              CONTAFACIL DATABASE                         │
+│        Ubicación: /data/data/.../databases/             │
+│                                                          │
+│  ┌──────────────┐  ┌───────────────┐  ┌──────────────┐ │
+│  │  PRODUCTS    │  │ TRANSACTIONS  │  │   EXPENSES   │ │
+│  │              │  │               │  │              │ │
+│  │ • Café       │  │ • Venta 1     │  │ • Agua $15   │ │
+│  │ • Pan        │  │ • Compra 1    │  │ • Luz $25    │ │
+│  │ • Leche      │  │ • Venta 2     │  │ • Arriendo   │ │
+│  │ • ...        │  │ • ...         │  │ • ...        │ │
+│  └──────────────┘  └───────────────┘  └──────────────┘ │
+│                                                          │
+│  TOTAL: 3 TABLAS = 1 BASE DE DATOS FUNCIONAL           │
+│  ALMACENAMIENTO: SQLite (SQLite3)                       │
+│  ACCESO: Room ORM                                       │
+│  TAMAÑO: ~50 KB vacía, ~200-500 KB con datos           │
+└──────────────────────────────────────────────────────────┘
+```
+

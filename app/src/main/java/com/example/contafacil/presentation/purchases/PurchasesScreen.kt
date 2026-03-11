@@ -76,6 +76,7 @@ fun PurchasesScreen() {
                     items(state.transactions) { transaction ->
                         PurchaseCard(
                             transaction = transaction,
+                            onMarkAsPaid = { viewModel.markPurchaseAsPaid(transaction) },
                             onDelete = { viewModel.deleteTransaction(transaction) }
                         )
                     }
@@ -111,6 +112,7 @@ fun PurchasesScreen() {
 @Composable
 fun PurchaseCard(
     transaction: TransactionEntity,
+    onMarkAsPaid: () -> Unit,
     onDelete: () -> Unit
 ) {
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("es", "CO"))
@@ -186,12 +188,23 @@ fun PurchaseCard(
                 )
             }
 
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "Eliminar",
-                    tint = MaterialTheme.colorScheme.error
-                )
+            Column(horizontalAlignment = Alignment.End) {
+                if (!transaction.isPaid) {
+                    IconButton(onClick = onMarkAsPaid) {
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = "Marcar pagada",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Eliminar",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
     }

@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -59,32 +61,35 @@ fun ReportsScreen() {
                 val currencyFormat = NumberFormat.getCurrencyInstance(Locale("es", "CO"))
 
                 ReportRow(
-                    label = "Ingresos (Ventas)",
-                    value = currencyFormat.format(state.totalIncome),
+                    label = "Ventas",
+                    value = currencyFormat.format(state.cashSales),
                     valueColor = MaterialTheme.colorScheme.primary,
-                    icon = Icons.Default.TrendingUp
+                    icon = Icons.AutoMirrored.Filled.TrendingUp,
+                    footnote = "Ventas cobradas (excluye créditos sin cobrar)"
                 )
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 ReportRow(
                     label = "Compras",
-                    value = currencyFormat.format(state.totalPurchases),
+                    value = currencyFormat.format(state.cashPurchases),
                     valueColor = MaterialTheme.colorScheme.error,
-                    icon = Icons.Default.ShoppingCart
+                    icon = Icons.Default.ShoppingCart,
+                    footnote = "Compras pagadas (excluye créditos sin pagar)"
                 )
 
                 ReportRow(
                     label = "Gastos",
-                    value = currencyFormat.format(state.totalExpenses),
+                    value = currencyFormat.format(state.cashExpenses),
                     valueColor = MaterialTheme.colorScheme.error,
-                    icon = Icons.Default.MoneyOff
+                    icon = Icons.Default.MoneyOff,
+                    footnote = "Suma de todos los gastos"
                 )
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 ReportRow(
-                    label = "Dinero Disponible",
+                    label = "Caja a cierre",
                     value = currencyFormat.format(state.cashFlow),
                     valueColor = if (state.cashFlow >= 0)
                         MaterialTheme.colorScheme.primary
@@ -95,7 +100,6 @@ fun ReportsScreen() {
                 )
             }
 
-            // Cuentas por Cobrar
             ReportCard(
                 title = "Cuentas por Cobrar",
                 icon = Icons.Default.MonetizationOn,
@@ -135,7 +139,6 @@ fun ReportsScreen() {
                 }
             }
 
-            // Cuentas por Pagar
             ReportCard(
                 title = "Cuentas por Pagar",
                 icon = Icons.Default.CreditCard,
@@ -184,26 +187,29 @@ fun ReportsScreen() {
                 val currencyFormat = NumberFormat.getCurrencyInstance(Locale("es", "CO"))
 
                 ReportRow(
-                    label = "Ingresos",
-                    value = currencyFormat.format(state.totalIncome),
+                    label = "Ventas",
+                    value = currencyFormat.format(state.totalSales),
                     valueColor = MaterialTheme.colorScheme.primary,
-                    icon = Icons.Default.Add
+                    icon = Icons.Default.Add,
+                    footnote = "Suma de todas las ventas realizadas"
                 )
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 ReportRow(
-                    label = "Costos (Compras)",
-                    value = currencyFormat.format(state.totalPurchases),
+                    label = "Costo",
+                    value = currencyFormat.format(state.costOfSales),
                     valueColor = MaterialTheme.colorScheme.error,
-                    icon = Icons.Default.Remove
+                    icon = Icons.Default.Remove,
+                    footnote = "Cantidad vendida × precio de compra de cada producto"
                 )
 
                 ReportRow(
                     label = "Gastos",
                     value = currencyFormat.format(state.totalExpenses),
                     valueColor = MaterialTheme.colorScheme.error,
-                    icon = Icons.Default.Remove
+                    icon = Icons.Default.Remove,
+                    footnote = "Suma de todos los gastos"
                 )
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -218,9 +224,9 @@ fun ReportsScreen() {
                     else
                         MaterialTheme.colorScheme.error,
                     icon = if (state.netProfit >= 0)
-                        Icons.Default.TrendingUp
+                        Icons.AutoMirrored.Filled.TrendingUp
                     else
-                        Icons.Default.TrendingDown,
+                        Icons.AutoMirrored.Filled.TrendingDown,
                     isBold = true
                 )
             }
@@ -295,40 +301,48 @@ fun ReportRow(
     value: String,
     valueColor: androidx.compose.ui.graphics.Color,
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
-    isBold: Boolean = false
+    isBold: Boolean = false,
+    footnote: String? = null
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            icon?.let {
-                Icon(
-                    imageVector = it,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = valueColor
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                icon?.let {
+                    Icon(
+                        imageVector = it,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = valueColor
+                    )
+                }
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (isBold) FontWeight.Bold else FontWeight.Normal
                 )
             }
+
             Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = if (isBold) FontWeight.Bold else FontWeight.Normal
+                text = value,
+                style = if (isBold) MaterialTheme.typography.titleLarge else MaterialTheme.typography.bodyLarge,
+                fontWeight = if (isBold) FontWeight.Bold else FontWeight.Normal,
+                color = valueColor
             )
         }
-
-        Text(
-            text = value,
-            style = if (isBold) MaterialTheme.typography.titleLarge else MaterialTheme.typography.bodyLarge,
-            fontWeight = if (isBold) FontWeight.Bold else FontWeight.Normal,
-            color = valueColor
-        )
+        if (!footnote.isNullOrBlank()) {
+            Text(
+                text = footnote,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = if (icon != null) 28.dp else 0.dp)
+            )
+        }
     }
 }
-

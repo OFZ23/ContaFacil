@@ -7,9 +7,18 @@
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
+/.idea/misc.xml
 .DS_Store
 /build
 /captures
 .externalNativeBuild
 .cxx
 local.properties
+
+# Logs de compilación
+compile_log.txt
+compile_log2.txt
+install_log.txt
+
+# APK generados por Gradle (el APK compartible en raíz sí se incluye)
+app/build/

@@ -1,6 +1,7 @@
 package com.example.contafacil.data.local.dao
 
 import androidx.room.*
+import com.example.contafacil.data.local.entity.PaymentMethod
 import com.example.contafacil.data.local.entity.TransactionEntity
 import com.example.contafacil.data.local.entity.TransactionType
 import kotlinx.coroutines.flow.Flow
@@ -22,8 +23,22 @@ interface TransactionDao {
     @Query("SELECT SUM(totalAmount) FROM transactions WHERE type = :type AND date BETWEEN :startDate AND :endDate")
     suspend fun getTotalAmountByType(type: TransactionType, startDate: Long, endDate: Long): Double?
 
+    @Query("SELECT SUM(totalAmount) FROM transactions WHERE type = :type AND paymentMethod = :paymentMethod AND date BETWEEN :startDate AND :endDate")
+    suspend fun getTotalAmountByTypeAndPaymentMethod(
+        type: TransactionType,
+        paymentMethod: PaymentMethod,
+        startDate: Long,
+        endDate: Long
+    ): Double?
+
+    @Query("SELECT SUM(quantity * costUnitPrice) FROM transactions WHERE type = :type AND date BETWEEN :startDate AND :endDate")
+    suspend fun getTotalCostByType(type: TransactionType, startDate: Long, endDate: Long): Double?
+
     @Query("SELECT SUM(totalAmount) FROM transactions WHERE type = :type AND isPaid = 0")
     suspend fun getTotalUnpaidByType(type: TransactionType): Double?
+
+    @Query("SELECT COALESCE(SUM(totalAmount), 0) FROM transactions WHERE type = :type AND isPaid = 1")
+    suspend fun getTotalPaidByType(type: TransactionType): Double?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransaction(transaction: TransactionEntity): Long
@@ -34,4 +49,3 @@ interface TransactionDao {
     @Delete
     suspend fun deleteTransaction(transaction: TransactionEntity)
 }
-

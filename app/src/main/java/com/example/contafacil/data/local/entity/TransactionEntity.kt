@@ -11,10 +11,10 @@ data class TransactionEntity(
     val productName: String,
     val quantity: Int,
     val unitPrice: Double,
+    val costUnitPrice: Double = 0.0,
     val totalAmount: Double,
     val paymentMethod: PaymentMethod,
     val isPaid: Boolean = true, // false si es a crédito
     val date: Long = System.currentTimeMillis(),
     val notes: String? = null
 )
-

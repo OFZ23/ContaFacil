@@ -3,6 +3,7 @@ package com.example.contafacil.data.repository
 import com.example.contafacil.data.local.dao.ExpenseDao
 import com.example.contafacil.data.local.entity.ExpenseCategory
 import com.example.contafacil.data.local.entity.ExpenseEntity
+import com.example.contafacil.data.local.entity.PaymentMethod
 import kotlinx.coroutines.flow.Flow
 
 class ExpenseRepository(private val expenseDao: ExpenseDao) {
@@ -22,8 +23,18 @@ class ExpenseRepository(private val expenseDao: ExpenseDao) {
     suspend fun getTotalExpenses(startDate: Long, endDate: Long): Double =
         expenseDao.getTotalExpenses(startDate, endDate) ?: 0.0
 
+    suspend fun getTotalExpensesByPaymentMethod(
+        paymentMethod: PaymentMethod,
+        startDate: Long,
+        endDate: Long
+    ): Double = expenseDao.getTotalExpensesByPaymentMethod(paymentMethod, startDate, endDate) ?: 0.0
+
     suspend fun getTotalUnpaidExpenses(): Double =
         expenseDao.getTotalUnpaidExpenses() ?: 0.0
+
+    /** Suma de todos los gastos registrados sin filtros */
+    suspend fun getTotalAllExpenses(): Double =
+        expenseDao.getTotalAllExpenses() ?: 0.0
 
     suspend fun insertExpense(expense: ExpenseEntity): Long =
         expenseDao.insertExpense(expense)
@@ -34,4 +45,3 @@ class ExpenseRepository(private val expenseDao: ExpenseDao) {
     suspend fun deleteExpense(expense: ExpenseEntity) =
         expenseDao.deleteExpense(expense)
 }
-

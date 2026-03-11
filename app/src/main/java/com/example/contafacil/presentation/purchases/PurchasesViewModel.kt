@@ -54,12 +54,12 @@ class PurchasesViewModel(
                 val totalAmount = quantity * unitPrice
                 val isPaid = paymentMethod != PaymentMethod.CREDITO
 
-                // Registrar la compra
                 val transaction = TransactionEntity(
                     type = TransactionType.COMPRA,
                     productName = productName,
                     quantity = quantity,
                     unitPrice = unitPrice,
+                    costUnitPrice = unitPrice,
                     totalAmount = totalAmount,
                     paymentMethod = paymentMethod,
                     isPaid = isPaid,
@@ -67,12 +67,11 @@ class PurchasesViewModel(
                 )
                 transactionRepository.insertTransaction(transaction)
 
-                // Actualizar inventario (aumentar stock)
                 productRepository.updateOrCreateProduct(
                     productName = productName,
                     quantity = quantity,
-                    price = unitPrice,
-                    isIncrease = true
+                    isIncrease = true,
+                    costPrice = unitPrice
                 )
 
             } catch (e: Exception) {
@@ -83,17 +82,29 @@ class PurchasesViewModel(
         }
     }
 
+    fun markPurchaseAsPaid(transaction: TransactionEntity) {
+        if (transaction.isPaid) return
+        viewModelScope.launch {
+            try {
+                transactionRepository.updateTransaction(transaction.copy(isPaid = true))
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(
+                    errorMessage = "Error al marcar compra como pagada: ${e.message}"
+                )
+            }
+        }
+    }
+
     fun deleteTransaction(transaction: TransactionEntity) {
         viewModelScope.launch {
             try {
                 transactionRepository.deleteTransaction(transaction)
 
-                // Restaurar inventario
                 productRepository.updateOrCreateProduct(
                     productName = transaction.productName,
                     quantity = transaction.quantity,
-                    price = transaction.unitPrice,
-                    isIncrease = false
+                    isIncrease = false,
+                    costPrice = transaction.costUnitPrice
                 )
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
@@ -107,4 +118,3 @@ class PurchasesViewModel(
         _state.value = _state.value.copy(errorMessage = null)
     }
 }
-

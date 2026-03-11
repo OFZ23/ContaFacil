@@ -1,0 +1,119 @@
+╔══════════════════════════════════════════════════════════════╗
+║                                                              ║
+║              📱 CONTAFACIL - GUÍA RÁPIDA 📱                  ║
+║         Instalar la App en tu Celular Android               ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────┐
+│  OPCIÓN 1: Transferir el APK (LA MÁS FÁCIL) ⭐               │
+└──────────────────────────────────────────────────────────────┘
+
+  1️⃣  Copia el archivo "ContaFacil.apk" a tu celular
+      (Por WhatsApp, email, USB, Google Drive, etc.)
+
+  2️⃣  En tu celular:
+      • Ve a Ajustes → Seguridad
+      • Activa "Instalar aplicaciones desconocidas"
+
+  3️⃣  Abre el archivo "ContaFacil.apk" desde tu celular
+
+  4️⃣  Toca "Instalar"
+
+  5️⃣  ¡Listo! Abre la app y empieza a usarla
+
+
+┌──────────────────────────────────────────────────────────────┐
+│  OPCIÓN 2: USB + Android Studio (Para Desarrolladores)      │
+└──────────────────────────────────────────────────────────────┘
+
+  1️⃣  En tu celular:
+      • Ajustes → Acerca del teléfono
+      • Toca 7 veces en "Número de compilación"
+      • Ahora eres desarrollador ✓
+
+  2️⃣  Activa la Depuración USB:
+      • Ajustes → Opciones de Desarrollador
+      • Activa "Depuración USB"
+
+  3️⃣  Conecta tu celular a la PC con el cable USB
+
+  4️⃣  En tu celular, acepta el mensaje de depuración USB
+
+  5️⃣  En Android Studio:
+      • Selecciona tu celular en el menú superior
+      • Haz clic en Run ▶️
+
+
+┌──────────────────────────────────────────────────────────────┐
+│  OPCIÓN 3: Usar Scripts Automáticos (Terminal)              │
+└──────────────────────────────────────────────────────────────┘
+
+  Con tu celular conectado por USB:
+
+  $ bash install_on_phone.sh
+
+
+┌──────────────────────────────────────────────────────────────┐
+│  UBICACIÓN DEL APK                                           │
+└──────────────────────────────────────────────────────────────┘
+
+  📁 ContaFacil.apk
+  📁 app/build/outputs/apk/debug/app-debug.apk
+
+
+┌──────────────────────────────────────────────────────────────┐
+│  REQUISITOS                                                  │
+└──────────────────────────────────────────────────────────────┘
+
+  ✅ Android 7.0 o superior
+  ✅ 20 MB de espacio libre
+  ✅ Permiso de micrófono (para entrada por voz)
+
+
+┌──────────────────────────────────────────────────────────────┐
+│  ¿PROBLEMAS AL INSTALAR?                                     │
+└──────────────────────────────────────────────────────────────┘
+
+  ❌ "App no instalada"
+     → Habilita "Fuentes desconocidas" en Ajustes → Seguridad
+
+  ❌ El celular no aparece en Android Studio
+     → Revoca autorizaciones USB y vuelve a conectar
+     → Cambia el modo USB a "Transferencia de archivos"
+
+  ❌ La app se cierra al abrirla
+     → Verifica que tu Android sea 7.0 o superior
+     → Reinstala la aplicación
+
+
+┌──────────────────────────────────────────────────────────────┐
+│  CARACTERÍSTICAS DE CONTAFACIL                               │
+└──────────────────────────────────────────────────────────────┘
+
+  💰 INGRESOS       →  Registra ventas con voz o manual
+  🛒 COMPRAS        →  Gestiona compras a proveedores
+  💸 GASTOS         →  Controla gastos operativos
+  📦 INVENTARIO     →  Stock actualizado automáticamente
+  📊 REPORTES       →  Flujo de caja y estados financieros
+  🎤 ENTRADA POR VOZ →  "Vendí 3 café en efectivo"
+
+
+┌──────────────────────────────────────────────────────────────┐
+│  MÁS INFORMACIÓN                                             │
+└──────────────────────────────────────────────────────────────┘
+
+  📖 GUIA_INSTALACION_CELULAR.md  →  Guía completa paso a paso
+  📖 README_INSTALACION.md         →  Documentación general
+  📖 PROYECTO_COMPLETADO.md        →  Estado del proyecto
+
+
+╔══════════════════════════════════════════════════════════════╗
+║                                                              ║
+║  ¡Tu app está lista para usar en tu celular! 🎉             ║
+║                                                              ║
+║  Archivo: ContaFacil.apk                                    ║
+║  Tamaño: ~20 MB                                             ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+

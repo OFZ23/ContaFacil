@@ -1,9 +1,11 @@
 package com.example.contafacil.presentation.expenses
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,14 +33,18 @@ fun ExpensesScreen() {
     }
 
     val state by viewModel.state.collectAsState()
+    val currencyFormat = remember { NumberFormat.getCurrencyInstance(Locale("es", "CO")) }
+    val totalExpenses = remember(state.expenses) { state.expenses.sumOf { it.amount } }
     var showAddDialog by remember { mutableStateOf(false) }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = { Text("Gastos") },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
@@ -52,7 +58,33 @@ fun ExpensesScreen() {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .background(MaterialTheme.colorScheme.background)
         ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Total de gastos registrados",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = currencyFormat.format(totalExpenses),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+
             if (state.expenses.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -67,12 +99,13 @@ fun ExpensesScreen() {
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(state.expenses) { expense ->
                         ExpenseCard(
                             expense = expense,
+                            onMarkAsPaid = { viewModel.markExpenseAsPaid(expense) },
                             onDelete = { viewModel.deleteExpense(expense) }
                         )
                     }
@@ -108,6 +141,7 @@ fun ExpensesScreen() {
 @Composable
 fun ExpenseCard(
     expense: ExpenseEntity,
+    onMarkAsPaid: () -> Unit,
     onDelete: () -> Unit
 ) {
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("es", "CO"))
@@ -115,10 +149,8 @@ fun ExpenseCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)
-        )
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
             modifier = Modifier
@@ -141,55 +173,56 @@ fun ExpenseCard(
                             ExpenseCategory.OTROS -> Icons.Default.Inventory
                         },
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.tertiary
+                        tint = MaterialTheme.colorScheme.secondary
                     )
                     Text(
                         text = expense.category.name,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.tertiary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = expense.description,
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = currencyFormat.format(expense.amount),
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.error
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = when (expense.paymentMethod) {
-                            PaymentMethod.EFECTIVO -> Icons.Default.TrendingUp
+                            PaymentMethod.EFECTIVO -> Icons.AutoMirrored.Filled.TrendingUp
                             PaymentMethod.TRANSFERENCIA -> Icons.Default.Assessment
                             PaymentMethod.TARJETA -> Icons.Default.ShoppingCart
                             PaymentMethod.CREDITO -> Icons.Default.MoneyOff
                         },
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.tertiary
+                        tint = MaterialTheme.colorScheme.secondary
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = expense.paymentMethod.name,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.tertiary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     if (!expense.isPaid) {
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "• POR PAGAR",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                            fontWeight = FontWeight.Bold
+                        AssistChip(
+                            onClick = {},
+                            enabled = false,
+                            label = { Text("Pendiente") }
                         )
                     }
                 }
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = dateFormat.format(Date(expense.date)),
                     style = MaterialTheme.typography.bodySmall,
@@ -197,12 +230,23 @@ fun ExpenseCard(
                 )
             }
 
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "Eliminar",
-                    tint = MaterialTheme.colorScheme.error
-                )
+            Column(horizontalAlignment = Alignment.End) {
+                if (!expense.isPaid) {
+                    IconButton(onClick = onMarkAsPaid) {
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = "Marcar pagado",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Eliminar",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
     }

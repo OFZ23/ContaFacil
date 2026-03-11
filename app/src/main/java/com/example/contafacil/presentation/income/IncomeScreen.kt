@@ -8,10 +8,12 @@ import android.speech.RecognizerIntent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,15 +22,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.example.contafacil.data.local.AppDatabase
 import com.example.contafacil.data.local.entity.PaymentMethod
+import com.example.contafacil.data.local.entity.ProductEntity
 import com.example.contafacil.data.local.entity.TransactionEntity
 import com.example.contafacil.data.repository.ProductRepository
 import com.example.contafacil.data.repository.TransactionRepository
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
-import androidx.core.content.ContextCompat
 
 private data class SaleDraft(
     val productName: String = "",
@@ -217,6 +220,7 @@ fun IncomeScreen() {
                     items(state.transactions) { transaction ->
                         TransactionCard(
                             transaction = transaction,
+                            onMarkAsPaid = { viewModel.markSaleAsPaid(transaction) },
                             onDelete = { viewModel.deleteTransaction(transaction) }
                         )
                     }
@@ -227,6 +231,7 @@ fun IncomeScreen() {
 
     if (showAddDialog) {
         AddSaleDialog(
+            products = state.products,
             initialProductName = saleDraft.productName,
             initialQuantity = saleDraft.quantity,
             initialPaymentMethod = saleDraft.paymentMethod,
@@ -255,6 +260,7 @@ fun IncomeScreen() {
 @Composable
 fun TransactionCard(
     transaction: TransactionEntity,
+    onMarkAsPaid: () -> Unit,
     onDelete: () -> Unit
 ) {
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("es", "CO"))
@@ -295,7 +301,7 @@ fun TransactionCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = when (transaction.paymentMethod) {
-                            PaymentMethod.EFECTIVO -> Icons.Default.TrendingUp
+                            PaymentMethod.EFECTIVO -> Icons.AutoMirrored.Filled.TrendingUp
                             PaymentMethod.TRANSFERENCIA -> Icons.Default.Assessment
                             PaymentMethod.TARJETA -> Icons.Default.ShoppingCart
                             PaymentMethod.CREDITO -> Icons.Default.MoneyOff
@@ -327,12 +333,23 @@ fun TransactionCard(
                 )
             }
 
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "Eliminar",
-                    tint = MaterialTheme.colorScheme.error
-                )
+            Column(horizontalAlignment = Alignment.End) {
+                if (!transaction.isPaid) {
+                    IconButton(onClick = onMarkAsPaid) {
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = "Marcar cobrada",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Eliminar",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
     }
@@ -341,6 +358,7 @@ fun TransactionCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddSaleDialog(
+    products: List<ProductEntity>,
     initialProductName: String = "",
     initialQuantity: Int? = null,
     initialPaymentMethod: PaymentMethod = PaymentMethod.EFECTIVO,
@@ -353,6 +371,15 @@ fun AddSaleDialog(
     var selectedPaymentMethod by remember(initialPaymentMethod) { mutableStateOf(initialPaymentMethod) }
     var notes by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
+
+    val suggestedProducts = remember(productName, products) {
+        val query = productName.trim()
+        if (query.isBlank()) {
+            products.take(5)
+        } else {
+            products.filter { it.name.contains(query, ignoreCase = true) }.take(5)
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -368,9 +395,67 @@ fun AddSaleDialog(
                     value = productName,
                     onValueChange = { productName = it },
                     label = { Text("Producto") },
+                    supportingText = {
+                        if (products.isNotEmpty()) {
+                            Text("Escribe para buscar en inventario o toca una sugerencia")
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
+
+                if (suggestedProducts.isNotEmpty()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        ) {
+                            suggestedProducts.forEach { product ->
+                                ListItem(
+                                    headlineContent = { Text(product.name) },
+                                    supportingContent = {
+                                        Text(
+                                            "Disponible: ${product.stock} • Precio sugerido: ${NumberFormat.getCurrencyInstance(Locale(\"es\", \"CO\")).format(product.price)}"
+                                        )
+                                    },
+                                    leadingContent = {
+                                        Icon(Icons.Default.Inventory, contentDescription = null)
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            productName = product.name
+                                            if (price.isBlank()) {
+                                                price = product.price.toString()
+                                            }
+                                        },
+                                    colors = ListItemDefaults.colors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0f)
+                                    )
+                                )
+                                HorizontalDivider()
+                            }
+                        }
+                    }
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    suggestedProducts.forEach { product ->
+                        AssistChip(
+                            onClick = {
+                                productName = product.name
+                                if (price.isBlank()) {
+                                    price = product.price.toString()
+                                }
+                            },
+                            label = { Text(product.name) }
+                        )
+                    }
+                }
 
                 OutlinedTextField(
                     value = quantity,
@@ -444,8 +529,8 @@ fun AddSaleDialog(
                     }
                 },
                 enabled = productName.isNotBlank() &&
-                         quantity.toIntOrNull() != null && quantity.toIntOrNull()!! > 0 &&
-                         price.toDoubleOrNull() != null && price.toDoubleOrNull()!! > 0
+                    quantity.toIntOrNull() != null && quantity.toIntOrNull()!! > 0 &&
+                    price.toDoubleOrNull() != null && price.toDoubleOrNull()!! > 0
             ) {
                 Text("Guardar")
             }

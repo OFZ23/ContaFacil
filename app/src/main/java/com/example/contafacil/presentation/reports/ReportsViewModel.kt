@@ -12,10 +12,15 @@ import kotlinx.coroutines.launch
 import java.util.*
 
 data class ReportsState(
-    val totalIncome: Double = 0.0,
-    val totalPurchases: Double = 0.0,
+    val totalSales: Double = 0.0,
+    val costOfSales: Double = 0.0,
     val totalExpenses: Double = 0.0,
+    // Flujo de caja
+    val cashSales: Double = 0.0,
+    val cashPurchases: Double = 0.0,
+    val cashExpenses: Double = 0.0,
     val cashFlow: Double = 0.0,
+    // Cuentas
     val accountsReceivable: Double = 0.0,
     val accountsPayable: Double = 0.0,
     val netProfit: Double = 0.0,
@@ -41,8 +46,6 @@ class ReportsViewModel(
                 _state.value = _state.value.copy(isLoading = true)
 
                 val calendar = Calendar.getInstance()
-
-                // Si no se especifica fecha, usar el mes actual
                 val start = startDate ?: run {
                     calendar.set(Calendar.DAY_OF_MONTH, 1)
                     calendar.set(Calendar.HOUR_OF_DAY, 0)
@@ -50,39 +53,39 @@ class ReportsViewModel(
                     calendar.set(Calendar.SECOND, 0)
                     calendar.timeInMillis
                 }
-
                 val end = endDate ?: System.currentTimeMillis()
 
-                // Obtener totales
-                val totalIncome = transactionRepository.getTotalAmountByType(
+                // Estado de resultados
+                val totalSales = transactionRepository.getTotalAmountByType(
                     TransactionType.VENTA, start, end
                 )
-
-                val totalPurchases = transactionRepository.getTotalAmountByType(
-                    TransactionType.COMPRA, start, end
+                val costOfSales = transactionRepository.getTotalCostByType(
+                    TransactionType.VENTA, start, end
                 )
-
                 val totalExpenses = expenseRepository.getTotalExpenses(start, end)
+                val netProfit = totalSales - costOfSales - totalExpenses
 
-                // Cuentas por cobrar y pagar
+                // Flujo de caja
+                val cashSales = transactionRepository.getTotalPaidByType(TransactionType.VENTA)
+                val cashPurchases = transactionRepository.getTotalPaidByType(TransactionType.COMPRA)
+                val cashExpenses = expenseRepository.getTotalAllExpenses()
+                val cashFlow = cashSales - cashPurchases - cashExpenses
+
+                // Cuentas
                 val accountsReceivable = transactionRepository.getTotalUnpaidByType(
                     TransactionType.VENTA
                 )
-
                 val accountsPayable = transactionRepository.getTotalUnpaidByType(
                     TransactionType.COMPRA
                 ) + expenseRepository.getTotalUnpaidExpenses()
 
-                // Flujo de caja
-                val cashFlow = totalIncome - totalPurchases - totalExpenses
-
-                // Estado de resultados (Utilidad/Pérdida)
-                val netProfit = totalIncome - totalPurchases - totalExpenses
-
                 _state.value = _state.value.copy(
-                    totalIncome = totalIncome,
-                    totalPurchases = totalPurchases,
+                    totalSales = totalSales,
+                    costOfSales = costOfSales,
                     totalExpenses = totalExpenses,
+                    cashSales = cashSales,
+                    cashPurchases = cashPurchases,
+                    cashExpenses = cashExpenses,
                     cashFlow = cashFlow,
                     accountsReceivable = accountsReceivable,
                     accountsPayable = accountsPayable,
@@ -103,4 +106,3 @@ class ReportsViewModel(
         _state.value = _state.value.copy(errorMessage = null)
     }
 }
-

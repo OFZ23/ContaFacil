@@ -9,7 +9,7 @@ data class ProductEntity(
     val id: Long = 0,
     val name: String,
     val price: Double,
+    val costPrice: Double = 0.0,
     val stock: Int = 0,
     val minStockAlert: Int = 5
 )
-

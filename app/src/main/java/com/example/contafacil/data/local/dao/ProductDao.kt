@@ -30,7 +30,6 @@ interface ProductDao {
     @Query("UPDATE products SET stock = stock + :quantity WHERE id = :productId")
     suspend fun increaseStock(productId: Long, quantity: Int)
 
-    @Query("UPDATE products SET stock = stock - :quantity WHERE id = :productId")
+    @Query("UPDATE products SET stock = MAX(stock - :quantity, 0) WHERE id = :productId")
     suspend fun decreaseStock(productId: Long, quantity: Int)
 }
-

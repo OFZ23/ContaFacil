@@ -67,6 +67,19 @@ class ExpensesViewModel(
         }
     }
 
+    fun markExpenseAsPaid(expense: ExpenseEntity) {
+        if (expense.isPaid) return
+        viewModelScope.launch {
+            try {
+                expenseRepository.updateExpense(expense.copy(isPaid = true))
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(
+                    errorMessage = "Error al marcar gasto como pagado: ${e.message}"
+                )
+            }
+        }
+    }
+
     fun deleteExpense(expense: ExpenseEntity) {
         viewModelScope.launch {
             try {
@@ -83,4 +96,3 @@ class ExpensesViewModel(
         _state.value = _state.value.copy(errorMessage = null)
     }
 }
-
