@@ -1,11 +1,5 @@
 # ContaFacil - Sistema de Contabilidad para Microempresarios
 
-## 📲 Descargar la App (APK)
-
-> El APK listo para instalar está en la raíz del repositorio:
->
-> **[`ContaFacil.apk`](ContaFacil.apk)** ← descarga este archivo y ábrelo en tu celular Android
-
 ### Pasos para instalar
 1. Descarga el archivo `ContaFacil.apk` desde esta página (botón **Raw** o **Download**)
 2. Envíatelo al celular por WhatsApp, email o USB
@@ -148,10 +142,12 @@ com.example.contafacil/
 Este es un proyecto universitario. Para contribuir, por favor crear un fork y enviar pull requests.
 
 ## Licencia
-Proyecto académico - Universidad [Nombre de la Universidad]
+Proyecto académico - Universidad Industrial de Santander
 
 ## Autores
-- [Tu Nombre] - Desarrollo inicial
+- Andrés Felipe Avella Rubiano
+- Javier Alejandro Silva Murillo
+- Oscar Fabian Fuentes Zúñiga
 
 ## Agradecimientos
 - Profesor guía del proyecto
