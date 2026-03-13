@@ -33,6 +33,9 @@ interface ExpenseDao {
     @Query("SELECT SUM(amount) FROM expenses WHERE isPaid = 0")
     suspend fun getTotalUnpaidExpenses(): Double?
 
+    @Query("SELECT SUM(amount) FROM expenses WHERE isPaid = 0 AND date BETWEEN :startDate AND :endDate")
+    suspend fun getTotalUnpaidExpensesInRange(startDate: Long, endDate: Long): Double?
+
     @Query("SELECT COALESCE(SUM(amount),0) FROM expenses")
     suspend fun getTotalAllExpenses(): Double?
 

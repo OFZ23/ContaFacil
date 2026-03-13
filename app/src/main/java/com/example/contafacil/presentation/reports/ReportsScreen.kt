@@ -52,6 +52,11 @@ fun ReportsScreen() {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            PeriodSelectorButton(
+                selectedPeriod = state.selectedPeriod,
+                onPeriodSelected = viewModel::onPeriodSelected
+            )
+
             // Flujo de Caja
             ReportCard(
                 title = "Flujo de Caja",
@@ -232,7 +237,7 @@ fun ReportsScreen() {
             }
 
             Text(
-                text = "* Reportes calculados del mes actual",
+                text = "* Reportes calculados para: ${state.selectedPeriod.label()}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = 8.dp)
@@ -252,6 +257,54 @@ fun ReportsScreen() {
             }
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PeriodSelectorButton(
+    selectedPeriod: ReportPeriod,
+    onPeriodSelected: (ReportPeriod) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded }
+    ) {
+        OutlinedTextField(
+            value = selectedPeriod.label(),
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Tipo de reporte") },
+            leadingIcon = { Icon(Icons.Default.DateRange, contentDescription = null) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor()
+        )
+
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            ReportPeriod.entries.forEach { period ->
+                DropdownMenuItem(
+                    text = { Text(period.label()) },
+                    onClick = {
+                        onPeriodSelected(period)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
+private fun ReportPeriod.label(): String = when (this) {
+    ReportPeriod.DIARIO -> "Diario"
+    ReportPeriod.SEMANAL -> "Semanal"
+    ReportPeriod.MENSUAL -> "Mensual"
+    ReportPeriod.TODO_EL_TIEMPO -> "Todo el tiempo"
 }
 
 @Composable

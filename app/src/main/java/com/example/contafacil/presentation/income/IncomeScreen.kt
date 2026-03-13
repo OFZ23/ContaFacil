@@ -8,7 +8,6 @@ import android.speech.RecognizerIntent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -30,12 +29,14 @@ import com.example.contafacil.data.local.entity.TransactionEntity
 import com.example.contafacil.data.repository.ProductRepository
 import com.example.contafacil.data.repository.TransactionRepository
 import java.text.NumberFormat
+import java.text.Normalizer
 import java.text.SimpleDateFormat
 import java.util.*
 
 private data class SaleDraft(
     val productName: String = "",
     val quantity: Int? = null,
+    val price: Double? = null,
     val paymentMethod: PaymentMethod = PaymentMethod.EFECTIVO
 )
 
@@ -77,22 +78,34 @@ fun IncomeScreen() {
 
         val parsed = VoiceCommandParser.parseSaleCommand(spokenText)
         if (parsed.quantity == null || parsed.productName.isNullOrBlank()) {
-            lastParsedSummary = "No se pudo interpretar producto y cantidad"
+            lastParsedSummary = "No se pudo interpretar. Usa: 'Vendí 3 café volcán a 5000'"
             Toast.makeText(
                 context,
-                "No pude extraer producto/cantidad. Intenta: 'Vendi 3 cafe en efectivo'",
+                "Formato: 'Vendí [cantidad] [producto] a [precio]'\nEj: 'Vendí 3 café volcán a 5000'",
                 Toast.LENGTH_LONG
             ).show()
             return@rememberLauncherForActivityResult
         }
 
-        val method = parsed.paymentMethod ?: PaymentMethod.EFECTIVO
-        lastParsedSummary = "Producto: ${parsed.productName}, Cantidad: ${parsed.quantity}, Pago: ${method.name}"
+        val matchedProduct = matchProductByVoiceText(
+            spokenProduct = parsed.productName,
+            products = state.products
+        )
+        val resolvedProductName = matchedProduct?.name ?: parsed.productName
+
+        val priceText = if (parsed.unitPrice != null) "Precio: ${parsed.unitPrice}" else "Precio: (ingresa manualmente)"
+        val productText = if (!matchedProduct?.name.isNullOrBlank() && matchedProduct?.name != parsed.productName) {
+            "Producto: ${parsed.productName} -> ${matchedProduct?.name}"
+        } else {
+            "Producto: $resolvedProductName"
+        }
+        lastParsedSummary = "$productText | Cantidad: ${parsed.quantity} | $priceText | Pago: EFECTIVO"
 
         saleDraft = SaleDraft(
-            productName = parsed.productName,
-            quantity = parsed.quantity,
-            paymentMethod = parsed.paymentMethod ?: PaymentMethod.EFECTIVO
+            productName   = resolvedProductName,
+            quantity      = parsed.quantity,
+            price         = parsed.unitPrice,
+            paymentMethod = PaymentMethod.EFECTIVO
         )
         showAddDialog = true
         Toast.makeText(context, "Datos de voz cargados en el formulario", Toast.LENGTH_SHORT).show()
@@ -109,7 +122,7 @@ fun IncomeScreen() {
         val speechIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-CO")
-            putExtra(RecognizerIntent.EXTRA_PROMPT, "Di: 'Vendi 3 cafe en efectivo'")
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Di: 'Vendí 3 café volcán a 5000'")
         }
 
         try {
@@ -129,8 +142,9 @@ fun IncomeScreen() {
             val speechIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-CO")
-                putExtra(RecognizerIntent.EXTRA_PROMPT, "Di: 'Vendi 3 cafe en efectivo'")
+                putExtra(RecognizerIntent.EXTRA_PROMPT, "Di: 'Vendí 3 café volcán a 5000'")
             }
+
             try {
                 speechLauncher.launch(speechIntent)
             } catch (_: ActivityNotFoundException) {
@@ -234,6 +248,7 @@ fun IncomeScreen() {
             products = state.products,
             initialProductName = saleDraft.productName,
             initialQuantity = saleDraft.quantity,
+            initialPrice = saleDraft.price,
             initialPaymentMethod = saleDraft.paymentMethod,
             onDismiss = { showAddDialog = false },
             onConfirm = { productName, quantity, price, paymentMethod, notes ->
@@ -361,15 +376,23 @@ fun AddSaleDialog(
     products: List<ProductEntity>,
     initialProductName: String = "",
     initialQuantity: Int? = null,
+    initialPrice: Double? = null,
     initialPaymentMethod: PaymentMethod = PaymentMethod.EFECTIVO,
     onDismiss: () -> Unit,
     onConfirm: (String, Int, Double, PaymentMethod, String?) -> Unit
 ) {
     var productName by remember(initialProductName) { mutableStateOf(initialProductName) }
     var quantity by remember(initialQuantity) { mutableStateOf(initialQuantity?.toString().orEmpty()) }
-    var price by remember { mutableStateOf("") }
+    var price by remember(initialPrice) {
+        mutableStateOf(
+            if (initialPrice != null && initialPrice > 0)
+                initialPrice.toBigDecimal().stripTrailingZeros().toPlainString()
+            else ""
+        )
+    }
     var selectedPaymentMethod by remember(initialPaymentMethod) { mutableStateOf(initialPaymentMethod) }
     var notes by remember { mutableStateOf("") }
+    var productExpanded by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
 
     val suggestedProducts = remember(productName, products) {
@@ -391,69 +414,52 @@ fun AddSaleDialog(
                     .padding(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                OutlinedTextField(
-                    value = productName,
-                    onValueChange = { productName = it },
-                    label = { Text("Producto") },
-                    supportingText = {
-                        if (products.isNotEmpty()) {
-                            Text("Escribe para buscar en inventario o toca una sugerencia")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
-                if (suggestedProducts.isNotEmpty()) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        ) {
-                            suggestedProducts.forEach { product ->
-                                ListItem(
-                                    headlineContent = { Text(product.name) },
-                                    supportingContent = {
-                                        Text(
-                                            "Disponible: ${product.stock} • Precio sugerido: ${NumberFormat.getCurrencyInstance(Locale("es", "CO")).format(product.price)}"
-                                        )
-                                    },
-                                    leadingContent = {
-                                        Icon(Icons.Default.Inventory, contentDescription = null)
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            productName = product.name
-                                            if (price.isBlank()) {
-                                                price = product.price.toString()
-                                            }
-                                        },
-                                    colors = ListItemDefaults.colors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0f)
-                                    )
-                                )
-                                HorizontalDivider()
-                            }
-                        }
+                ExposedDropdownMenuBox(
+                    expanded = productExpanded && suggestedProducts.isNotEmpty(),
+                    onExpandedChange = {
+                        productExpanded = !productExpanded && suggestedProducts.isNotEmpty()
                     }
-                }
+                ) {
+                    OutlinedTextField(
+                        value = productName,
+                        onValueChange = {
+                            productName = it
+                            productExpanded = products.isNotEmpty()
+                        },
+                        label = { Text("Producto") },
+                        supportingText = {
+                            if (products.isNotEmpty()) {
+                                Text("Toca para desplegar opciones o escribe para filtrar")
+                            }
+                        },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(
+                                expanded = productExpanded && suggestedProducts.isNotEmpty()
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        singleLine = true
+                    )
 
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    suggestedProducts.forEach { product ->
-                        AssistChip(
-                            onClick = {
-                                productName = product.name
-                                if (price.isBlank()) {
-                                    price = product.price.toString()
+                    ExposedDropdownMenu(
+                        expanded = productExpanded && suggestedProducts.isNotEmpty(),
+                        onDismissRequest = { productExpanded = false }
+                    ) {
+                        suggestedProducts.forEach { product ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "${product.name} (Disp: ${product.stock})"
+                                    )
+                                },
+                                onClick = {
+                                    productName = product.name
+                                    productExpanded = false
                                 }
-                            },
-                            label = { Text(product.name) }
-                        )
+                            )
+                        }
                     }
                 }
 
@@ -542,3 +548,47 @@ fun AddSaleDialog(
         }
     )
 }
+
+private fun matchProductByVoiceText(
+    spokenProduct: String?,
+    products: List<ProductEntity>
+): ProductEntity? {
+    val query = normalizeForMatch(spokenProduct).orEmpty()
+    if (query.isBlank() || products.isEmpty()) return null
+
+    val exact = products.firstOrNull { normalizeForMatch(it.name) == query }
+    if (exact != null) return exact
+
+    val contains = products.firstOrNull {
+        val normalizedName = normalizeForMatch(it.name).orEmpty()
+        normalizedName.contains(query) || query.contains(normalizedName)
+    }
+    if (contains != null) return contains
+
+    val queryTokens = query.split(" ").filter { it.isNotBlank() }.toSet()
+    val ranked = products
+        .map { product ->
+            val tokens = normalizeForMatch(product.name)
+                .orEmpty()
+                .split(" ")
+                .filter { it.isNotBlank() }
+                .toSet()
+            val overlap = queryTokens.intersect(tokens).size
+            product to overlap
+        }
+        .sortedByDescending { it.second }
+
+    return ranked.firstOrNull { it.second > 0 }?.first
+}
+
+private fun normalizeForMatch(value: String?): String? {
+    if (value.isNullOrBlank()) return null
+    val withoutAccents = Normalizer.normalize(value, Normalizer.Form.NFD)
+        .replace(Regex("""\p{InCombiningDiacriticalMarks}+"""), "")
+    return withoutAccents
+        .lowercase()
+        .replace(Regex("""[^a-z0-9\s]"""), " ")
+        .replace(Regex("""\s+"""), " ")
+        .trim()
+}
+

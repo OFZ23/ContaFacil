@@ -32,6 +32,9 @@ class ExpenseRepository(private val expenseDao: ExpenseDao) {
     suspend fun getTotalUnpaidExpenses(): Double =
         expenseDao.getTotalUnpaidExpenses() ?: 0.0
 
+    suspend fun getTotalUnpaidExpensesInRange(startDate: Long, endDate: Long): Double =
+        expenseDao.getTotalUnpaidExpensesInRange(startDate, endDate) ?: 0.0
+
     /** Suma de todos los gastos registrados sin filtros */
     suspend fun getTotalAllExpenses(): Double =
         expenseDao.getTotalAllExpenses() ?: 0.0

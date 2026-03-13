@@ -37,8 +37,14 @@ interface TransactionDao {
     @Query("SELECT SUM(totalAmount) FROM transactions WHERE type = :type AND isPaid = 0")
     suspend fun getTotalUnpaidByType(type: TransactionType): Double?
 
+    @Query("SELECT SUM(totalAmount) FROM transactions WHERE type = :type AND isPaid = 0 AND date BETWEEN :startDate AND :endDate")
+    suspend fun getTotalUnpaidByTypeInRange(type: TransactionType, startDate: Long, endDate: Long): Double?
+
     @Query("SELECT COALESCE(SUM(totalAmount), 0) FROM transactions WHERE type = :type AND isPaid = 1")
     suspend fun getTotalPaidByType(type: TransactionType): Double?
+
+    @Query("SELECT COALESCE(SUM(totalAmount), 0) FROM transactions WHERE type = :type AND isPaid = 1 AND date BETWEEN :startDate AND :endDate")
+    suspend fun getTotalPaidByTypeInRange(type: TransactionType, startDate: Long, endDate: Long): Double?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransaction(transaction: TransactionEntity): Long

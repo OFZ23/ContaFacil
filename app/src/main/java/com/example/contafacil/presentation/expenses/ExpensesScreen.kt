@@ -184,7 +184,7 @@ fun ExpenseCard(
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = expense.description,
+                    text = expense.description.ifBlank { "Sin descripción" },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -309,7 +309,7 @@ fun AddExpenseDialog(
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Descripción") },
+                    label = { Text("Descripción (opcional)") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -358,12 +358,11 @@ fun AddExpenseDialog(
             TextButton(
                 onClick = {
                     val amt = amount.toDoubleOrNull() ?: 0.0
-                    if (description.isNotBlank() && amt > 0) {
-                        onConfirm(selectedCategory, description, amt, selectedPaymentMethod)
+                    if (amt > 0) {
+                        onConfirm(selectedCategory, description.trim(), amt, selectedPaymentMethod)
                     }
                 },
-                enabled = description.isNotBlank() &&
-                         amount.toDoubleOrNull() != null && amount.toDoubleOrNull()!! > 0
+                enabled = amount.toDoubleOrNull() != null && amount.toDoubleOrNull()!! > 0
             ) {
                 Text("Guardar")
             }

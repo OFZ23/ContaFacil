@@ -11,7 +11,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.*
 
+enum class ReportPeriod {
+    DIARIO,
+    SEMANAL,
+    MENSUAL,
+    TODO_EL_TIEMPO
+}
+
 data class ReportsState(
+    val selectedPeriod: ReportPeriod = ReportPeriod.MENSUAL,
     val totalSales: Double = 0.0,
     val costOfSales: Double = 0.0,
     val totalExpenses: Double = 0.0,
@@ -37,23 +45,19 @@ class ReportsViewModel(
     val state: StateFlow<ReportsState> = _state.asStateFlow()
 
     init {
-        loadReports()
+        loadReports(ReportPeriod.MENSUAL)
     }
 
-    fun loadReports(startDate: Long? = null, endDate: Long? = null) {
+    fun onPeriodSelected(period: ReportPeriod) {
+        loadReports(period)
+    }
+
+    private fun loadReports(period: ReportPeriod) {
         viewModelScope.launch {
             try {
-                _state.value = _state.value.copy(isLoading = true)
+                _state.value = _state.value.copy(isLoading = true, selectedPeriod = period)
 
-                val calendar = Calendar.getInstance()
-                val start = startDate ?: run {
-                    calendar.set(Calendar.DAY_OF_MONTH, 1)
-                    calendar.set(Calendar.HOUR_OF_DAY, 0)
-                    calendar.set(Calendar.MINUTE, 0)
-                    calendar.set(Calendar.SECOND, 0)
-                    calendar.timeInMillis
-                }
-                val end = endDate ?: System.currentTimeMillis()
+                val (start, end) = getRangeForPeriod(period)
 
                 // Estado de resultados
                 val totalSales = transactionRepository.getTotalAmountByType(
@@ -66,18 +70,33 @@ class ReportsViewModel(
                 val netProfit = totalSales - costOfSales - totalExpenses
 
                 // Flujo de caja
-                val cashSales = transactionRepository.getTotalPaidByType(TransactionType.VENTA)
-                val cashPurchases = transactionRepository.getTotalPaidByType(TransactionType.COMPRA)
-                val cashExpenses = expenseRepository.getTotalAllExpenses()
+                val cashSales = transactionRepository.getTotalPaidByTypeInRange(
+                    type = TransactionType.VENTA,
+                    startDate = start,
+                    endDate = end
+                )
+                val cashPurchases = transactionRepository.getTotalPaidByTypeInRange(
+                    type = TransactionType.COMPRA,
+                    startDate = start,
+                    endDate = end
+                )
+                val cashExpenses = totalExpenses
                 val cashFlow = cashSales - cashPurchases - cashExpenses
 
                 // Cuentas
-                val accountsReceivable = transactionRepository.getTotalUnpaidByType(
-                    TransactionType.VENTA
+                val accountsReceivable = transactionRepository.getTotalUnpaidByTypeInRange(
+                    type = TransactionType.VENTA,
+                    startDate = start,
+                    endDate = end
                 )
-                val accountsPayable = transactionRepository.getTotalUnpaidByType(
-                    TransactionType.COMPRA
-                ) + expenseRepository.getTotalUnpaidExpenses()
+                val accountsPayable = transactionRepository.getTotalUnpaidByTypeInRange(
+                    type = TransactionType.COMPRA,
+                    startDate = start,
+                    endDate = end
+                ) + expenseRepository.getTotalUnpaidExpensesInRange(
+                    startDate = start,
+                    endDate = end
+                )
 
                 _state.value = _state.value.copy(
                     totalSales = totalSales,
@@ -104,5 +123,45 @@ class ReportsViewModel(
 
     fun clearError() {
         _state.value = _state.value.copy(errorMessage = null)
+    }
+
+    private fun getRangeForPeriod(period: ReportPeriod): Pair<Long, Long> {
+        val now = System.currentTimeMillis()
+        val calendar = Calendar.getInstance()
+
+        val start = when (period) {
+            ReportPeriod.DIARIO -> {
+                calendar.timeInMillis = now
+                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                calendar.set(Calendar.MINUTE, 0)
+                calendar.set(Calendar.SECOND, 0)
+                calendar.set(Calendar.MILLISECOND, 0)
+                calendar.timeInMillis
+            }
+
+            ReportPeriod.SEMANAL -> {
+                calendar.timeInMillis = now
+                calendar.set(Calendar.DAY_OF_WEEK, calendar.firstDayOfWeek)
+                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                calendar.set(Calendar.MINUTE, 0)
+                calendar.set(Calendar.SECOND, 0)
+                calendar.set(Calendar.MILLISECOND, 0)
+                calendar.timeInMillis
+            }
+
+            ReportPeriod.MENSUAL -> {
+                calendar.timeInMillis = now
+                calendar.set(Calendar.DAY_OF_MONTH, 1)
+                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                calendar.set(Calendar.MINUTE, 0)
+                calendar.set(Calendar.SECOND, 0)
+                calendar.set(Calendar.MILLISECOND, 0)
+                calendar.timeInMillis
+            }
+
+            ReportPeriod.TODO_EL_TIEMPO -> 0L
+        }
+
+        return start to now
     }
 }

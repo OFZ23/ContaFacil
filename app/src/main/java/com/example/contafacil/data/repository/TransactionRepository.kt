@@ -36,9 +36,15 @@ class TransactionRepository(private val transactionDao: TransactionDao) {
     suspend fun getTotalUnpaidByType(type: TransactionType): Double =
         transactionDao.getTotalUnpaidByType(type) ?: 0.0
 
+    suspend fun getTotalUnpaidByTypeInRange(type: TransactionType, startDate: Long, endDate: Long): Double =
+        transactionDao.getTotalUnpaidByTypeInRange(type, startDate, endDate) ?: 0.0
+
     /** Solo las ventas/compras que ya están cobradas o pagadas (excluye créditos pendientes) */
     suspend fun getTotalPaidByType(type: TransactionType): Double =
         transactionDao.getTotalPaidByType(type) ?: 0.0
+
+    suspend fun getTotalPaidByTypeInRange(type: TransactionType, startDate: Long, endDate: Long): Double =
+        transactionDao.getTotalPaidByTypeInRange(type, startDate, endDate) ?: 0.0
 
     suspend fun insertTransaction(transaction: TransactionEntity): Long =
         transactionDao.insertTransaction(transaction)
